@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Обезвредь бомбу</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@500;700;800&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: слева бомба с таймером и проводами, справа уравнение, ввод и разбор. Тёмный «бункер». */
+:root{
+  --bg:#0e1013; --panel:#171a1f; --panel2:#20242b; --line:#2e333c; --fg:#eef1f5; --muted:#9aa3b0;
+  --amber:#ffb020; --red:#ff3b30; --ok:#34d27b; --steel:#5b6573;
+  --f-display:"Russo One",system-ui,sans-serif; --f-body:"Inter",system-ui,-apple-system,sans-serif; --f-mono:"Share Tech Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:repeating-linear-gradient(45deg,#121418 0 22px,#101216 22px 44px);color:var(--fg);font:16px/1.45 var(--f-body);padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);overflow-x:hidden}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}
+.wrap{max-width:1000px;margin:0 auto;padding-block:14px 30px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.logo{font:400 24px/1 var(--f-display);letter-spacing:.03em;display:flex;align-items:center;gap:10px}
+.logo span{color:var(--red)}
+.hud{display:flex;gap:8px;flex-wrap:wrap}
+.ibtn{font:700 14px var(--f-body);background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;min-height:40px;padding:0 12px;cursor:pointer}
+.ibtn[aria-pressed="true"]{border-color:var(--amber);color:var(--amber)}
+.levels{display:flex;gap:8px;flex-wrap:wrap}
+.lv{font:700 13px var(--f-body);color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 14px;min-height:38px;cursor:pointer}
+.lv[aria-current="true"]{background:var(--amber);color:#1a1000;border-color:var(--amber)}
+.lv .st{color:var(--amber)}.lv[aria-current="true"] .st{color:#5a3a00}
+.game{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:800px){.game{grid-template-columns:1fr}}
+.bomb{position:relative;background:linear-gradient(160deg,#2a2f37,#1a1d22);border:3px solid #0a0b0d;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.06)}
+.bomb.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px) rotate(-1deg)}75%{transform:translateX(8px) rotate(1deg)}}
+.bolts::before,.bolts::after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9aa3b0,#3b424c);top:10px}
+.bolts::before{left:10px}.bolts::after{right:10px}
+.timer{font:400 clamp(44px,9vw,72px)/1 var(--f-mono);color:var(--red);background:#120707;border:2px solid #3a0f0c;border-radius:12px;padding:10px 16px;text-align:center;text-shadow:0 0 14px rgba(255,59,48,.7);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.timer.calm{color:var(--amber);text-shadow:0 0 14px rgba(255,176,32,.6)}
+.timer.low{animation:blinkT .5s steps(2) infinite}
+@keyframes blinkT{50%{opacity:.35}}
+.timer.off{color:var(--steel);text-shadow:none;font-size:28px}
+.led{position:absolute;right:22px;top:26px;width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red);animation:led 1s infinite}
+@keyframes led{50%{opacity:.2}}
+.led.safe{background:var(--ok);box-shadow:0 0 12px var(--ok);animation:none}
+.wires{display:flex;flex-direction:column;gap:10px;padding:6px 4px}
+.wire{position:relative;height:16px;border-radius:9px;display:flex;align-items:center}
+.wire .l,.wire .r{height:100%;border-radius:9px;flex:1;transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
+.wire .l{border-radius:9px 0 0 9px}.wire .r{border-radius:0 9px 9px 0}
+.wire.cur{outline:2px dashed rgba(255,255,255,.35);outline-offset:4px}
+.wire.cut .l{transform:translateX(-10px) rotate(-8deg);transform-origin:left}
+.wire.cut .r{transform:translateX(10px) rotate(8deg);transform-origin:right}
+.wire.cut::after{content:"✂";position:absolute;left:50%;top:50%;transform:translate(-50%,-55%);font-size:20px}
+.wire.lost .l,.wire.lost .r{filter:grayscale(1) brightness(.5)}
+.bomb .info{display:flex;justify-content:space-between;font:700 13px var(--f-body);color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tag{font:800 12px var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.eq{font:400 clamp(28px,5.4vw,42px)/1.2 var(--f-display);margin:0;letter-spacing:.02em;overflow-wrap:anywhere}
+.ask{color:var(--muted);font-weight:700;margin:0}
+.input{display:flex;align-items:center;gap:10px}
+.input .x{font:400 30px var(--f-display);color:var(--muted)}
+.screen{flex:1;font:400 40px/62px var(--f-mono);text-align:right;background:#090a0c;border:2px solid var(--line);border-radius:12px;padding:0 16px;min-height:66px;color:var(--amber);font-variant-numeric:tabular-nums}
+.screen.empty{color:#3a3f48}
+.screen.bad{border-color:var(--red);animation:shake .35s}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.key{font:400 26px var(--f-mono);min-height:56px;border-radius:12px;border:1px solid #3a404b;background:linear-gradient(#2b3039,#1d2027);color:var(--fg);cursor:pointer;box-shadow:0 5px 0 #08090b;transition:transform .06s,box-shadow .06s}
+.key:active,.key.press{transform:translateY(4px);box-shadow:0 1px 0 #08090b}
+.key.go{background:linear-gradient(#ff5a4f,#d12a20);border-color:#ff7a70;font:400 17px var(--f-display);box-shadow:0 5px 0 #6e130d}
+.key.go:active,.key.go.press{box-shadow:0 1px 0 #6e130d}
+.key.del{color:var(--muted)}
+.msg{min-height:24px;font:800 16px var(--f-body)}
+.msg.ok{color:var(--ok)}.msg.bad{color:var(--red)}
+.hint,.explain{background:#1d2530;border:1px solid #2f4a63;border-radius:12px;padding:10px 12px;font-weight:700;display:flex;flex-direction:column;gap:6px}
+.hint ol,.explain ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-family:var(--f-mono);font-size:17px}
+.explain{background:#2a1a1a;border-color:#6b2c2c}
+.explain h4{margin:0;font:800 12px var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:#ff9a90}
+.explain .ans{color:var(--amber)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:800 15px var(--f-body);background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:12px;min-height:44px;padding:0 16px;cursor:pointer}
+.btn.main{background:var(--amber);color:#1a1000;border-color:var(--amber)}
+.btn:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(4,5,7,.78);backdrop-filter:blur(5px)}
+.modal{width:min(520px,100%);background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;animation:rise .4s cubic-bezier(.2,1.4,.4,1)}
+@keyframes rise{from{transform:translateY(24px) scale(.94);opacity:0}}
+.modal h3{font:400 26px/1.15 var(--f-display);margin:0}
+.modal p{margin:0;color:var(--muted)}
+.modal .big{font-size:58px;line-height:1}
+.rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;align-self:stretch;text-align:left}
+.rules li{background:var(--panel2);border-radius:10px;padding:8px 12px 8px 34px;position:relative;font-weight:700}
+.rules li::before{content:"✓";position:absolute;left:12px;color:var(--ok)}
+.sheet{align-self:stretch;background:#f2efe6;color:#1b1b1b;font:400 18px/1.7 var(--f-mono);padding:12px 16px;border-radius:8px;text-align:left;box-shadow:0 8px 20px rgba(0,0,0,.4);transform:rotate(-.6deg)}
+.sheet .h{font:800 12px var(--f-body);letter-spacing:.14em;color:#8a2a20;margin-bottom:4px}
+.sheet .tot{color:#c4241a;border-top:2px dashed #999;margin-top:4px}
+.stars{font-size:44px;letter-spacing:4px;color:var(--amber)}.stars .off{color:#3a3f48}
+details{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 16px}
+summary{cursor:pointer;font-weight:800;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--line)}
+th{color:var(--muted);font-size:12px;border-top:0}
+.st-ok{color:var(--ok)}.st-mid{color:var(--amber)}.st-bad{color:var(--red)}
+.how{color:var(--muted);font-size:13px;margin:0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div class="wrap">
+  <header>
+    <div class="logo">💣 Обезвредь <span>бомбу</span></div>
+    <div class="hud">
+      <button class="ibtn" id="timerBtn" type="button" aria-pressed="true">⏱ Таймер</button>
+      <button class="ibtn" id="mute" type="button" aria-label="Выключить звук">🔊</button>
+    </div>
+  </header>
+  <nav class="levels" id="levels" aria-label="Уровни"></nav>
+  <div class="game">
+    <section class="bomb bolts" id="bomb">
+      <div class="led" id="led"></div>
+      <div class="info"><span id="bombName">Бомба №1</span><span id="wireInfo">Провода: 0/5</span></div>
+      <div class="timer" id="timer">02:00</div>
+      <div class="wires" id="wires"></div>
+      <p class="how">Каждое верное уравнение перерезает провод. Ошибка — минус 10 секунд.</p>
+    </section>
+    <section class="panel">
+      <div class="tag" id="tag">Уровень</div>
+      <p class="eq" id="eq"></p>
+      <p class="ask">Найди x</p>
+      <div class="input"><span class="x">x =</span><div class="screen empty" id="screen">?</div></div>
+      <div class="msg" id="msg"></div>
+      <div class="hint" id="hint" hidden></div>
+      <div class="explain" id="explain" hidden></div>
+      <div class="pad" id="pad"></div>
+      <div class="row"><button class="btn" id="tutBtn" type="button">📘 Как решать</button><button class="btn" id="hintBtn" type="button">Подсказка</button></div>
+      <p class="how">Можно печатать с клавиатуры, Enter — резать провод.</p>
+    </section>
+  </div>
+  <details><summary>Для учителя: как решал</summary><div id="report"></div></details>
+</div>
+
+<div class="overlay" id="start"><div class="modal">
+  <div class="big" aria-hidden="true">💣</div>
+  <h3>Обезвредь бомбу</h3>
+  <p>На бомбе 5 проводов. Реши уравнение — перережешь провод. Успей до нуля. 5 бомб, последняя самая злая.</p>
+  <button class="btn main" id="playBtn" type="button">Начать</button>
+</div></div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+// красивая запись: x + 3, x − 3, 3x, x
+const sg=n=>n<0?' − '+(-n):' + '+n;
+const co=k=>k===1?'x':k+'x';
+const br=(a,b)=>(a===1?'':a)+'(x'+sg(b)+')';
+
+// генераторы: ответ — целое число 1..12, шаги — разбор без сюрпризов
+const GEN={
+ brackets(){const x=R(1,12),a=R(2,6),b=pick([R(1,9),-R(1,Math.min(9,x-1||1))]);const c=a*(x+b);
+   return {eq:br(a,b)+' = '+c,a:x,kind:'Скобки',steps:['Раскрой скобки: '+co(a)+sg(a*b)+' = '+c,'Перенеси число: '+co(a)+' = '+c+(a*b<0?' + '+(-a*b):' − '+a*b)+' = '+(c-a*b),'x = '+(c-a*b)+' : '+a+' = '+x]}},
+ both(){const x=R(1,12),c=R(1,5),a=c+R(2,5),b=R(1,15),d=(a-c)*x+b;
+   return {eq:co(a)+sg(b)+' = '+co(c)+sg(d),a:x,kind:'x в обеих частях',steps:['Иксы влево, числа вправо: '+co(a)+' − '+co(c)+' = '+d+' − '+b,(a-c===1?'x':(a-c)+'x')+' = '+(d-b),'x = '+(d-b)+' : '+(a-c)+' = '+x]}},
+ twoBr(){const x=R(1,10),c=R(2,4),a=c+R(2,3),b=R(-3,6)||2,dd=R(1,8);const L=a*(x+b),d=(L-c*x)/c;
+   if(!Number.isInteger(d)||d===0)return GEN.twoBr();
+   const k=a-c,rhs=c*d-a*b;return {eq:br(a,b)+' = '+br(c,d),a:x,kind:'Скобки с двух сторон',steps:['Раскрой обе скобки: '+co(a)+sg(a*b)+' = '+co(c)+sg(c*d),'Иксы влево, числа вправо: '+co(a)+' − '+co(c)+' = '+(c*d)+(a*b<0?' + '+(-a*b):' − '+a*b),(k===1?'x':k+'x')+' = '+rhs,'x = '+rhs+' : '+k+' = '+x]}},
+ frac(){if(Math.random()<.5){const x=R(1,12),b=pick([2,3,4,5]),a=R(1,9);const c=(x+a)/b;if(!Number.isInteger(c))return GEN.frac();
+     return {eq:'(x + '+a+') / '+b+' = '+c,a:x,kind:'Дроби',steps:['Умножь обе части на '+b+': x + '+a+' = '+(b*c),'x = '+(b*c)+' − '+a+' = '+x]}}
+   const x=R(2,12),b=pick([2,3,4]),dd=b+pick([2,3]),a=R(1,8);const c=(b*(x+a)-dd*x)/(-b)+0;const cc=(dd*(x+a)-b*x)/b; // (x+a)/b = (x+cc)/dd
+   const c2=(dd*(x+a))/b-x;if(!Number.isInteger(c2)||c2<=0||c2===a)return GEN.frac();
+   return {eq:'(x + '+a+') / '+b+' = (x + '+c2+') / '+dd,a:x,kind:'Дроби',steps:['Крест-накрест: '+dd+'(x + '+a+') = '+b+'(x + '+c2+')','Раскрой скобки: '+co(dd)+' + '+dd*a+' = '+co(b)+' + '+b*c2,'Иксы влево, числа вправо: '+co(dd-b)+' = '+(b*c2-dd*a),'x = '+(b*c2-dd*a)+' : '+(dd-b)+' = '+x]}},
+ boss(){return pick([GEN.both,GEN.twoBr,GEN.frac,GEN.twoBr])()}
+};
+const LEVELS=[{name:'Скобки',gen:'brackets',t:150},{name:'x с двух сторон',gen:'both',t:150},{name:'Скобки с двух сторон',gen:'twoBr',t:200},{name:'Дроби',gen:'frac',t:200},{name:'Финальная бомба',gen:'boss',t:180}];
+const TUT=[
+ {title:'Уравнения со скобками',rules:['Сначала раскрой скобки: множитель умножаем на каждое слагаемое','Число переносим в другую часть — знак меняется','Делим на число перед x'],ex:['3(x + 4) = 27','3x + 12 = 27','3x = 27 − 12 = 15','x = 15 : 3'],tot:'x = 5'},
+ {title:'x с двух сторон',rules:['Все иксы собираем слева, все числа справа','При переносе знак меняется: +2x → −2x','Приводим подобные и делим'],ex:['5x + 3 = 2x + 15','5x − 2x = 15 − 3','3x = 12'],tot:'x = 4'},
+ {title:'Скобки с двух сторон',rules:['Раскрой обе скобки','Дальше как обычно: иксы влево, числа вправо','Проверь знаки перед скобкой'],ex:['4(x + 1) = 2(x + 7)','4x + 4 = 2x + 14','4x − 2x = 14 − 4','2x = 10'],tot:'x = 5'},
+ {title:'Уравнения с дробями',rules:['Одна дробь: умножь обе части на знаменатель','Две дроби: умножаем крест-накрест','Потом раскрываем скобки и решаем как обычно'],ex:['(x + 4) / 5 = (x − 2) / 2','2(x + 4) = 5(x − 2)','2x + 8 = 5x − 10','18 = 3x'],tot:'x = 6'},
+ {title:'Финальная бомба',rules:['Здесь всё вперемешку','Сначала посмотри, есть ли скобки или дроби','Не спеши: каждая ошибка — минус 10 секунд'],ex:['Скобки → раскрыть','Дроби → умножить','Иксы влево, числа вправо'],tot:'и делим'}];
+const WIRE=[['#e53935','#ff6b5e'],['#1e88e5','#5fb3ff'],['#fdd835','#ffee75'],['#43a047','#7ad67e'],['#f5f5f5','#cfcfcf']];
+
+let lv=0,wi=0,task=null,input='',busy=false,timerOn=true,timeLeft=0,last=0,raf=0,paused=false,hintStep=0,wrongs=0,waitNext=false,cur=null,lost=0;
+const log=LEVELS.map(()=>[]);
+let best={};try{best=JSON.parse(localStorage.getItem('bombBest')||'{}')||{}}catch(e){}
+
+// звук
+let ac=null,muted=false;function audio(){try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state!=='running')ac.resume()}catch(e){}}
+addEventListener('pointerdown',audio);addEventListener('keydown',audio);
+function tone(f,d,type='square',v=.05,delay=0){if(!ac||muted)return;const t=ac.currentTime+delay;const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+d)}
+function noise(d,v=.3){if(!ac||muted)return;const b=ac.createBuffer(1,ac.sampleRate*d,ac.sampleRate),c=b.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=(Math.random()*2-1)*(1-i/c.length);const s=ac.createBufferSource();s.buffer=b;const g=ac.createGain();g.gain.value=v;s.connect(g).connect(ac.destination);s.start()}
+const sCut=()=>{noise(.08,.25);tone(1200,.06,'square',.05,.02)};
+const sBad=()=>tone(140,.25,'sawtooth',.07);
+const sTick=()=>tone(900,.03,'square',.025);
+const sBoom=()=>{noise(1.2,.6);tone(60,.8,'sine',.3)};
+const sWin=()=>[523,659,784,1047].forEach((f,i)=>tone(f,.25,'triangle',.07,i*.1));
+
+// частицы
+const fx=$('fx'),ctx=fx.getContext('2d');let parts=[],on=false;
+function size(){fx.width=innerWidth*devicePixelRatio;fx.height=innerHeight*devicePixelRatio}
+function burst(x,y,n,C){for(let i=0;i<n;i++){const a=Math.random()*6.28,s=2+Math.random()*7;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-3,l:1,r:3+Math.random()*5,c:C[i%C.length]})}if(!on)loop()}
+function loop(){on=true;const d=devicePixelRatio;ctx.clearRect(0,0,fx.width,fx.height);parts=parts.filter(p=>p.l>0);parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.22;p.l-=.017;ctx.globalAlpha=Math.max(0,p.l);ctx.fillStyle=p.c;ctx.fillRect(p.x*d,p.y*d,p.r*d,p.r*d)});ctx.globalAlpha=1;if(parts.length)requestAnimationFrame(loop);else on=false}
+
+function fmtT(s){s=Math.max(0,Math.ceil(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function drawTimer(){const t=$('timer');if(!timerOn){t.textContent='без таймера';t.className='timer off';return}t.textContent=fmtT(timeLeft);t.className='timer'+(timeLeft>45?' calm':'')+(timeLeft<=15?' low':'')}
+function drawWires(){const W=$('wires');W.replaceChildren();for(let i=0;i<5;i++){const w=el('div','wire'+(i<wi?(log[lv][i]&&log[lv][i].won?' cut':' lost'):i===wi?' cur':''));const l=el('div','l'),r=el('div','r');l.style.background=r.style.background='linear-gradient('+WIRE[i][1]+','+WIRE[i][0]+')';w.append(l,r);W.append(w)}$('wireInfo').textContent='Провода: '+Math.min(wi,5)+'/5'}
+function drawLevels(){const nav=$('levels');nav.replaceChildren();LEVELS.forEach((L,i)=>{const b=el('button','lv',(i+1)+'. '+L.name);b.type='button';b.setAttribute('aria-current',String(i===lv));if(best[i])b.append(el('span','st',' '+'★'.repeat(best[i])));b.onclick=()=>go(i);nav.append(b)})}
+function newWire(){task=GEN[LEVELS[lv].gen]();input='';hintStep=0;wrongs=0;waitNext=false;cur={kind:task.kind,q:task.eq,a:task.a,won:false,first:true,hint:false};
+  $('eq').textContent=task.eq;$('tag').textContent=LEVELS[lv].name+' · провод '+(wi+1)+' из 5';$('msg').textContent='';$('msg').className='msg';$('hint').hidden=true;$('explain').hidden=true;$('hintBtn').disabled=false;$('hintBtn').textContent='Подсказка';drawScreen();drawWires()}
+function drawScreen(){const s=$('screen');s.textContent=input||'?';s.classList.toggle('empty',!input)}
+function tick(t){if(!timerOn||busy&&!waitNext){last=t;raf=requestAnimationFrame(tick);return}const dt=(t-last)/1000;last=t;if(!paused&&!waitNext){const before=Math.ceil(timeLeft);timeLeft-=dt;if(Math.ceil(timeLeft)<before&&timeLeft<=15)sTick()}drawTimer();if(timeLeft<=0){boom();return}raf=requestAnimationFrame(tick)}
+function startBomb(){cancelAnimationFrame(raf);wi=0;lost=0;busy=false;timeLeft=LEVELS[lv].t;log[lv]=[];$('led').className='led';$('bombName').textContent='Бомба №'+(lv+1);drawTimer();newWire();last=performance.now();raf=requestAnimationFrame(tick)}
+function press(k){if(waitNext&&k==='go'){waitNext=false;nextWire();return}if(busy)return;if(k==='del')input=input.slice(0,-1);else if(k==='go'){submit();return}else if(input.length<4)input=(input==='0'?'':input)+k;drawScreen()}
+function submit(){if(!input||busy)return;const v=+input;
+  if(v===task.a){busy=true;cur.won=true;sCut();$('msg').className='msg ok';$('msg').textContent=pick(['Чисто!','Провод перерезан.','Так держать!','Минус один.']);
+    const ws=$('wires').children[wi];if(ws){ws.className='wire cut';const r=ws.getBoundingClientRect();burst(r.left+r.width/2,r.top,24,['#ffb020','#fff','#ff6b5e'])}setTimeout(()=>{nextWire()},650)}
+  else{cur.first=false;wrongs++;sBad();const s=$('screen');s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');const b=$('bomb');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');
+    if(timerOn)timeLeft-=10;$('msg').className='msg bad';$('msg').textContent='x = '+input+' не подходит'+(timerOn?' · −10 сек':'')+'. Подставь и проверь.';input='';drawScreen();drawTimer();
+    if(wrongs===2)showHint(true);if(wrongs>=3){busy=true;showExplain()}}}
+function hintList(){return task.steps.length>1?task.steps.slice(0,-1):['Подели обе части на число перед x.']}
+function showHint(all){if(busy)return;const L=hintList();hintStep=all?L.length:Math.min(L.length,hintStep+1);cur.hint=true;const h=$('hint');h.hidden=false;h.replaceChildren(el('b',null,'Подсказка'));const ol=el('ol');L.slice(0,hintStep).forEach(x=>ol.append(el('li',null,x)));h.append(ol);const b=$('hintBtn');if(hintStep>=L.length){b.disabled=true;b.textContent='Подсказка ✓'}else b.textContent='Ещё шаг ('+hintStep+'/'+L.length+')'}
+function showExplain(){$('hint').hidden=true;const e=$('explain');e.hidden=false;e.replaceChildren(el('h4',null,'Разбор'));const ol=el('ol');task.steps.forEach((x,i,a)=>ol.append(el('li',i===a.length-1?'ans':null,x)));e.append(ol);
+  const b=el('button','btn main','Понятно, дальше ▶');b.type='button';b.onclick=()=>{if(waitNext){waitNext=false;nextWire()}};e.append(b);waitNext=true;cur.won=false;lost++;setTimeout(()=>b.focus(),50)}
+function nextWire(){log[lv].push(cur);report();wi++;busy=false;if(wi>=5){defused();return}newWire()}
+function stars(){const l=log[lv];const clean=l.filter(x=>x.won&&x.first).length;return clean>=5?3:clean>=3?2:1}
+function modal(title,big,body,btns){const ov=el('div','overlay');const m=el('div','modal');m.append(el('div','big',big),el('h3',null,title));if(body)m.append(body);const row=el('div','row');row.style.justifyContent='center';btns.forEach(([t,c,f])=>{const b=el('button','btn '+c,t);b.type='button';b.onclick=()=>{ov.remove();f()};row.append(b)});m.append(row);ov.append(m);document.body.append(ov);row.querySelector('button').focus()}
+function defused(){cancelAnimationFrame(raf);busy=true;$('led').className='led safe';sWin();for(let i=0;i<5;i++)setTimeout(()=>burst(innerWidth*(.2+Math.random()*.6),innerHeight*.3,36,['#34d27b','#ffb020','#fff','#5fb3ff']),i*130);
+  const n=stars();best[lv]=Math.max(best[lv]||0,n);try{localStorage.setItem('bombBest',JSON.stringify(best))}catch(e){}drawLevels();
+  const box=el('div');const st=el('div','stars');for(let i=0;i<3;i++)st.append(el('span',i<n?'':'off','★'));box.append(st,el('p',null,'Без ошибок: '+log[lv].filter(x=>x.first&&x.won).length+' из 5'+(timerOn?' · осталось '+fmtT(timeLeft):'')+'.'));
+  const last=lv===LEVELS.length-1;modal(last?'Финальная бомба обезврежена!':'Бомба обезврежена!','✅',box,last?[['Ещё раз','main',()=>go(lv)]]:[['Следующая бомба','main',()=>go(lv+1)],['Ещё раз','',()=>go(lv)]])}
+function boom(){cancelAnimationFrame(raf);busy=true;sBoom();const r=$('bomb').getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,90,['#ff3b30','#ffb020','#ffd27a','#333']);document.body.animate([{filter:'brightness(3)'},{filter:'none'}],{duration:500});
+  modal('БУМ!','💥',el('p',null,'Время вышло. Ты перерезал '+log[lv].filter(x=>x.won).length+' из 5 проводов. Попробуй ещё раз — числа будут новые.'),[['Ещё раз','main',()=>go(lv)],['Без таймера','',()=>{if(timerOn)$('timerBtn').click();go(lv)}]])}
+function tutorial(onClose){const T=TUT[lv];const ov=el('div','overlay');const m=el('div','modal');m.append(el('div','tag','Бомба '+(lv+1)+' · как решать'),el('h3',null,T.title));const ul=el('ul','rules');T.rules.forEach(r=>ul.append(el('li',null,r)));m.append(ul);
+  const sh=el('div','sheet');sh.append(el('div','h','ПРИМЕР'));T.ex.forEach(x=>sh.append(el('div',null,x)));sh.append(el('div','tot',T.tot));m.append(sh);
+  const b=el('button','btn main',onClose?'Понял, режем!':'Вернуться');b.type='button';b.onclick=()=>{ov.remove();paused=false;if(onClose)onClose()};m.append(b);ov.append(m);document.body.append(ov);setTimeout(()=>b.focus(),50)}
+function go(n){cancelAnimationFrame(raf);document.querySelectorAll('.overlay').forEach(o=>o.remove());lv=n;busy=true;drawLevels();$('eq').textContent='';tutorial(()=>startBomb())}
+function report(){const box=$('report');box.replaceChildren();const all=log.flat();const kinds=['Скобки','x в обеих частях','Скобки с двух сторон','Дроби'];const tb=el('table');const h=el('tr');['Тема','Без ошибок','С подсказкой','Вывод'].forEach(x=>h.append(el('th',null,x)));tb.append(h);
+  kinds.forEach(k=>{const l=all.filter(x=>x.kind===k);const f=l.filter(x=>x.won&&x.first).length,hi=l.filter(x=>x.hint).length;let v='—',c='';if(l.length){const r=f/l.length;if(r>=.8){v='уверенно';c='st-ok'}else if(r>=.5){v='почти';c='st-mid'}else{v='тренировать';c='st-bad'}}const tr=el('tr');tr.append(el('td',null,k),el('td',null,l.length?f+' из '+l.length:'—'),el('td',null,l.length?String(hi):'—'),el('td',c,v));tb.append(tr)});box.append(tb);
+  const miss=all.filter(x=>!x.first).map(x=>x.q+' → x = '+x.a);if(miss.length)box.append(el('p','how','Ошибки: '+miss.join('; ')))}
+
+const pad=$('pad');['7','8','9','4','5','6','1','2','3','del','0','go'].forEach(k=>{const b=el('button','key'+(k==='go'?' go':k==='del'?' del':''),k==='del'?'⌫':k==='go'?'Резать ✂':k);b.type='button';b.dataset.k=k;b.setAttribute('aria-label',k==='del'?'Стереть':k==='go'?'Резать провод':k);b.onclick=()=>press(k);pad.append(b)});
+addEventListener('keydown',e=>{if(document.querySelector('.overlay'))return;let k=null;if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='del';else if(e.key==='Enter')k='go';if(k){e.preventDefault();press(k);const b=pad.querySelector('[data-k="'+k+'"]');if(b){b.classList.add('press');setTimeout(()=>b.classList.remove('press'),90)}}});
+$('hintBtn').onclick=()=>showHint(false);
+$('tutBtn').onclick=()=>{if(document.querySelector('.overlay'))return;paused=true;tutorial(null)};
+$('timerBtn').onclick=()=>{timerOn=!timerOn;$('timerBtn').setAttribute('aria-pressed',String(timerOn));$('timerBtn').textContent=timerOn?'⏱ Таймер':'⏱ Без таймера';drawTimer()};
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇':'🔊';$('mute').setAttribute('aria-label',muted?'Включить звук':'Выключить звук')};
+addEventListener('resize',size);size();drawLevels();drawWires();
+$('playBtn').onclick=()=>{audio();$('start').remove();go(0)};
+$('playBtn').focus();
+})();
+</script>
+</body>
+</html>
