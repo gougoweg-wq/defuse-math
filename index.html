@@ -38,7 +38,7 @@ header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:s
 @keyframes shake{25%{transform:translateX(-8px) rotate(-1deg)}75%{transform:translateX(8px) rotate(1deg)}}
 .bolts::before,.bolts::after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9aa3b0,#3b424c);top:10px}
 .bolts::before{left:10px}.bolts::after{right:10px}
-.stage3d{position:relative;height:230px;margin:-6px -6px 0;border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#2b313b,#0d0f12 75%)}
+.stage3d{position:relative;height:250px;margin:-6px -6px 0;border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#2b313b,#0d0f12 75%)}
 .stage3d canvas{display:block;width:100%;height:100%}
 .stage3d .load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:700 13px var(--f-body)}
 .credits{color:#6b7380;font-size:12px;margin:0;text-align:center}
@@ -299,7 +299,7 @@ let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true})}c
 if(renderer){
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
 wrap.append(renderer.domElement);
-const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(32,1,.1,100);cam.position.set(0,1.3,4.2);cam.lookAt(0,.35,0);
+const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(32,1,.1,100);cam.position.set(0,1.25,3.6);cam.lookAt(0,.3,0);
 scene.add(new THREE.HemisphereLight(0xcfe3ff,0x1a1208,1.1));
 const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(2.5,4,3);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
 const rim=new THREE.DirectionalLight(0xffb020,1.2);rim.position.set(-3,2,-2);scene.add(rim);
@@ -307,7 +307,7 @@ const alarm=new THREE.PointLight(0xff2a1a,0,6);alarm.position.set(0,1.4,1.2);sce
 const floor=new THREE.Mesh(new THREE.CircleGeometry(2.2,48),new THREE.ShadowMaterial({opacity:.45}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
 const holder=new THREE.Group();scene.add(holder);
 const loader=new GLTFLoader();const cache={};let model=null,state='idle',urg=0,t0=performance.now(),fx=0,fxType='',boomT=0,safe=false;
-function fit(obj){const box=new THREE.Box3().setFromObject(obj);const size=box.getSize(new THREE.Vector3());const c=box.getCenter(new THREE.Vector3());const k=1.6/Math.max(size.x,size.y,size.z);obj.scale.setScalar(k);obj.position.set(-c.x*k,-box.min.y*k,-c.z*k);obj.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.emissive=m.material.emissive||new THREE.Color(0);}}})}
+function fit(obj){const box=new THREE.Box3().setFromObject(obj);const size=box.getSize(new THREE.Vector3());const c=box.getCenter(new THREE.Vector3());const k=2.5/Math.max(size.x,size.y,size.z);obj.scale.setScalar(k);obj.position.set(-c.x*k,-box.min.y*k,-c.z*k);obj.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.emissive=m.material.emissive||new THREE.Color(0);}}})}
 function get(name){if(cache[name])return Promise.resolve(cache[name]);return new Promise((res,rej)=>loader.load('models/'+name+'.glb',g=>{cache[name]=g.scene;res(g.scene)},undefined,rej))}
 function resize(){const w=wrap.clientWidth,h=wrap.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(wrap);resize();
@@ -323,10 +323,10 @@ function frame(t){const dt=Math.min(.05,(t-last)/1000);last=t;const time=(t-t0)/
   // мигание: чем меньше времени, тем чаще
   const rate=safe?0:2+urg*10;const on=safe?1:(Math.sin(time*rate*Math.PI)>0?1:0);alarm.intensity=safe?3:on*(4+urg*6);
   if(model&&!safe)model.traverse(m=>{if(m.isMesh&&/screen|mat8|mat14|red/i.test(m.material.name||''))m.material.emissive.setRGB(on*.6,0,0)});
-  cam.position.x=0;cam.position.y=1.3;
-  if(fx>0){fx=Math.max(0,fx-dt*3.2);if(fxType==='wrong'){cam.position.x=(Math.random()-.5)*.18*fx;cam.position.y=1.3+(Math.random()-.5)*.12*fx}else{holder.scale.setScalar(1+Math.sin(fx*Math.PI)*.12)}}
+  cam.position.x=0;cam.position.y=1.25;
+  if(fx>0){fx=Math.max(0,fx-dt*3.2);if(fxType==='wrong'){cam.position.x=(Math.random()-.5)*.18*fx;cam.position.y=1.25+(Math.random()-.5)*.12*fx}else{holder.scale.setScalar(1+Math.sin(fx*Math.PI)*.12)}}
   if(state==='boom'){boomT+=dt;const k=Math.min(1,boomT/.35);holder.scale.setScalar(1+k*1.4);if(model)model.traverse(m=>{if(m.isMesh)m.material.emissive.setRGB(k*3,k*1.6,k*.4)});alarm.intensity=20*(1-k);if(boomT>.38){holder.visible=false;state='gone'}}
-  cam.lookAt(0,.35,0);renderer.render(scene,cam);requestAnimationFrame(frame)}
+  cam.lookAt(0,.3,0);renderer.render(scene,cam);requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 window.B3D.reset('dynamite');
 }
