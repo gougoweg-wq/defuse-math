@@ -201,14 +201,21 @@ const GEN={
  system(){const x=pick([R(-5,-1),R(1,8)]),y=R(-5,8),a=R(1,4),b=R(1,4),d=R(1,4),e=R(1,4);const c=a*x+b*y,f=d*x-e*y,k=a*e+d*b;
    const l1=lin2(a,b)+' = '+num(c),l2=lin2(d,-e)+' = '+num(f);
    return {eq:l1+'\n'+l2,a:x,kind:'Системы',sys:true,ask:'Найди x',steps:[(e===1?'Умножим второе на '+b+': ':b===1?'Умножим первое на '+e+': ':'Умножим первое на '+e+', второе на '+b+': ')+lin2(a*e,b*e)+' = '+num(c*e)+' и '+lin2(d*b,-e*b)+' = '+num(f*b),'Сложим — y пропадает: '+lin(k,0)+' = '+num(c*e+f*b),'x = '+num(c*e+f*b)+' : '+k+' = '+num(x)]}},
- hard(){return pick([GEN.minusBr,GEN.fracHard,GEN.system,GEN.minusBr,GEN.word])()}
+ hard(){return pick([GEN.minusBr,GEN.fracHard,GEN.system,GEN.minusBr,GEN.word])()},
+ quad(){let r1=R(-9,9),r2=R(-9,9);if(r1===r2||(r1===0&&r2===0))return GEN.quad();const S=r1+r2,P=r1*r2;const big=Math.random()<.5;const ans=big?Math.max(r1,r2):Math.min(r1,r2);const [lo,hi]=[Math.min(r1,r2),Math.max(r1,r2)];
+   return {eq:quadEq(-S,P),a:ans,kind:'Квадратные',ask:big?'Найди больший корень':'Найди меньший корень',steps:['По теореме Виета: x₁ + x₂ = '+num(S)+', x₁ · x₂ = '+num(P),'Подбери два числа: их произведение '+num(P)+', а сумма '+num(S)+(P<0?' (знаки разные)':P>0&&S<0?' (оба отрицательные)':P>0?' (оба положительные)':''),'Корни: '+num(lo)+' и '+num(hi)+', значит '+(big?'больший':'меньший')+' — '+num(ans)]}},
+ viet(){const r1=pick([R(-8,-1),R(1,9)]);let r2=pick([R(-8,-1),R(1,9)]);if(r2===r1)r2=r1+R(1,4);const S=r1+r2,P=r1*r2;const v=R(0,2);
+   if(v===0)return {eq:'Один корень уравнения '+quadEq(-S,P)+' равен '+num(r1)+'. Найди второй корень.',a:r2,kind:'Виет',text:true,ask:'Второй корень',steps:['По Виету сумма корней: x₁ + x₂ = '+num(S),num(r1)+' + x₂ = '+num(S),'x₂ = '+num(S)+(r1<0?' + '+(-r1):' − '+r1)+' = '+num(r2)]};
+   if(v===1)return {eq:'Уравнение '+quadEq(-S,null)+' + c = 0 имеет корень '+num(r1)+'. Найди c.',a:P,kind:'Виет',text:true,ask:'c =',steps:['Сумма корней: x₁ + x₂ = '+num(S)+', значит второй корень '+num(S)+(r1<0?' + '+(-r1):' − '+r1)+' = '+num(r2),'По Виету c — это произведение корней','c = '+num(r1)+' · '+(r2<0?'('+num(r2)+')':num(r2))+' = '+num(P)]};
+   return {eq:'Уравнение x² + bx '+(P<0?'− '+(-P):'+ '+P)+' = 0 имеет корень '+num(r1)+'. Найди b.',a:-S,kind:'Виет',text:true,ask:'b =',steps:['Произведение корней: x₁ · x₂ = '+num(P)+', значит второй корень '+num(P)+' : '+(r1<0?'('+num(r1)+')':num(r1))+' = '+num(r2),'Сумма корней '+num(r1)+' + '+(r2<0?'('+num(r2)+')':num(r2))+' = '+num(S)+', а по Виету она равна −b','b = '+num(-S)]}}
 };
+function quadEq(b,c){let s='x²';if(b)s+=b===1?' + x':b===-1?' − x':b<0?' − '+(-b)+'x':' + '+b+'x';if(c!=null){if(c)s+=c<0?' − '+(-c):' + '+c;s+=' = 0'}return s}
 function yrs(n){const d=n%10,h=n%100;return n+' '+(d===1&&h!==11?'год':d>=2&&d<=4&&(h<12||h>14)?'года':'лет')}
 function gcd(a,b){return b?gcd(b,a%b):a}
 function num(n){return n<0?'−'+(-n):String(n)}
 function lin(k,c){let s=k===0?'':k===1?'x':k===-1?'−x':(k<0?'−'+(-k):k)+'x';if(c){s+=s?(c<0?' − '+(-c):' + '+c):num(c)}else if(!s)s='0';return s}
 function lin2(a,b){let s=a===1?'x':a===-1?'−x':num(a)+'x';s+=b<0?' − '+(b===-1?'':-b)+'y':' + '+(b===1?'':b)+'y';return s}
-const LEVELS=[{name:'Скобки',gen:'brackets',t:150},{name:'x с двух сторон',gen:'both',t:150},{name:'Скобки с двух сторон',gen:'twoBr',t:200},{name:'Дроби',gen:'frac',t:200},{name:'Финал I',gen:'boss',t:180},{name:'Минус перед скобкой',gen:'minusBr',t:220},{name:'Хитрые дроби',gen:'fracHard',t:260},{name:'Задачи',gen:'word',t:280},{name:'Системы',gen:'system',t:280},{name:'Хардкор',gen:'hard',t:240}];
+const LEVELS=[{name:'Скобки',gen:'brackets',t:150},{name:'x с двух сторон',gen:'both',t:150},{name:'Скобки с двух сторон',gen:'twoBr',t:200},{name:'Дроби',gen:'frac',t:200},{name:'Финал I',gen:'boss',t:180},{name:'Минус перед скобкой',gen:'minusBr',t:220},{name:'Хитрые дроби',gen:'fracHard',t:260},{name:'Задачи',gen:'word',t:280},{name:'Системы',gen:'system',t:280},{name:'Хардкор',gen:'hard',t:240},{name:'Квадратные (Виет)',gen:'quad',t:240},{name:'Виет: хитрости',gen:'viet',t:260}];
 const TUT=[
  {title:'Уравнения со скобками',rules:['Сначала раскрой скобки: множитель умножаем на каждое слагаемое','Число переносим в другую часть — знак меняется','Делим на число перед x'],ex:['3(x + 4) = 27','3x + 12 = 27','3x = 27 − 12 = 15','x = 15 : 3'],tot:'x = 5'},
  {title:'x с двух сторон',rules:['Все иксы собираем слева, все числа справа','При переносе знак меняется: +2x → −2x','Приводим подобные и делим'],ex:['5x + 3 = 2x + 15','5x − 2x = 15 − 3','3x = 12'],tot:'x = 4'},
@@ -219,7 +226,9 @@ const TUT=[
  {title:'Хитрые дроби',rules:['Две дроби через «=» — крест-накрест','Сумма дробей — умножь всё на общий знаменатель','Скобки после умножения раскрывай аккуратно'],ex:['x/3 + x/4 = 14','· 12:  4x + 3x = 168','7x = 168'],tot:'x = 24'},
  {title:'Задачи на уравнение',rules:['Обозначь неизвестное через x','Запиши, что чему равно — это и есть уравнение','Реши и проверь, подходит ли ответ по смыслу'],ex:['Брат старше сестры на 4 года, вместе 20','x + (x + 4) = 20','2x = 16'],tot:'сестре 8'},
  {title:'Системы уравнений',rules:['Цель — убрать одну переменную','Умножь уравнения так, чтобы при y были одинаковые числа с разными знаками','Сложи уравнения — y пропадёт'],ex:['2x + y = 7','x − y = 2','сложим: 3x = 9'],tot:'x = 3'},
- {title:'Хардкор',rules:['Всё сложное вперемешку','Отрицательные ответы — через «−»','Ошибка — минус 10 секунд, думай до выстрела'],ex:['Минус перед скобкой','Дроби крест-накрест','Системы и задачи'],tot:'удачи, сапёр'}];
+ {title:'Хардкор',rules:['Всё сложное вперемешку','Отрицательные ответы — через «−»','Ошибка — минус 10 секунд, думай до выстрела'],ex:['Минус перед скобкой','Дроби крест-накрест','Системы и задачи'],tot:'удачи, сапёр'},
+ {title:'Квадратные уравнения: теорема Виета',rules:['Для x² + bx + c = 0: x₁ + x₂ = −b, x₁ · x₂ = c','Сначала подбери пары множителей числа c','Из них выбери пару с нужной суммой','c < 0 — знаки корней разные; c > 0 и b > 0 — оба отрицательные'],ex:['x² − 7x + 12 = 0','x₁ + x₂ = 7, x₁ · x₂ = 12','пары: 1·12, 2·6, 3·4 → сумма 7'],tot:'x₁ = 3, x₂ = 4'},
+ {title:'Виет: хитрости',rules:['Знаешь один корень — второй найдёшь через сумму или произведение','c — это произведение корней','b — это сумма корней со знаком минус'],ex:['x² − 9x + c = 0, корень 4','второй: 9 − 4 = 5','c = 4 · 5'],tot:'c = 20'}];
 const WIRE=[['#e53935','#ff6b5e'],['#1e88e5','#5fb3ff'],['#fdd835','#ffee75'],['#43a047','#7ad67e'],['#f5f5f5','#cfcfcf']];
 
 let lv=0,wi=0,task=null,input='',busy=false,timerOn=true,timeLeft=0,last=0,raf=0,paused=false,hintStep=0,wrongs=0,waitNext=false,cur=null,lost=0;
@@ -276,7 +285,7 @@ function tutorial(onClose){const T=TUT[lv];const ov=el('div','overlay');const m=
   const sh=el('div','sheet');sh.append(el('div','h','ПРИМЕР'));T.ex.forEach(x=>sh.append(el('div',null,x)));sh.append(el('div','tot',T.tot));m.append(sh);
   const b=el('button','btn main',onClose?'Понял, режем!':'Вернуться');b.type='button';b.onclick=()=>{ov.remove();paused=false;if(onClose)onClose()};m.append(b);ov.append(m);document.body.append(ov);setTimeout(()=>b.focus(),50)}
 function go(n){cancelAnimationFrame(raf);document.querySelectorAll('.overlay').forEach(o=>o.remove());lv=n;busy=true;drawLevels();$('eq').textContent='';tutorial(()=>startBomb())}
-function report(){const box=$('report');box.replaceChildren();const all=log.flat();const kinds=['Скобки','x в обеих частях','Скобки с двух сторон','Дроби','Минус перед скобкой','Хитрые дроби','Задачи на уравнение','Системы'];const tb=el('table');const h=el('tr');['Тема','Без ошибок','С подсказкой','Вывод'].forEach(x=>h.append(el('th',null,x)));tb.append(h);
+function report(){const box=$('report');box.replaceChildren();const all=log.flat();const kinds=['Скобки','x в обеих частях','Скобки с двух сторон','Дроби','Минус перед скобкой','Хитрые дроби','Задачи на уравнение','Системы','Квадратные','Виет'];const tb=el('table');const h=el('tr');['Тема','Без ошибок','С подсказкой','Вывод'].forEach(x=>h.append(el('th',null,x)));tb.append(h);
   kinds.forEach(k=>{const l=all.filter(x=>x.kind===k);const f=l.filter(x=>x.won&&x.first).length,hi=l.filter(x=>x.hint).length;let v='—',c='';if(l.length){const r=f/l.length;if(r>=.8){v='уверенно';c='st-ok'}else if(r>=.5){v='почти';c='st-mid'}else{v='тренировать';c='st-bad'}}const tr=el('tr');tr.append(el('td',null,k),el('td',null,l.length?f+' из '+l.length:'—'),el('td',null,l.length?String(hi):'—'),el('td',c,v));tb.append(tr)});box.append(tb);
   const miss=all.filter(x=>!x.first).map(x=>x.q+' → x = '+x.a);if(miss.length)box.append(el('p','how','Ошибки: '+miss.join('; ')))}
 
