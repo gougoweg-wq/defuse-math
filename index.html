@@ -6,6 +6,7 @@
 <title>Обезвредь бомбу</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@500;700;800&family=Share+Tech+Mono&display=swap">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <style>
 /* Layout: слева бомба с таймером и проводами, справа уравнение, ввод и разбор. Тёмный «бункер». */
 :root{
@@ -37,6 +38,10 @@ header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:s
 @keyframes shake{25%{transform:translateX(-8px) rotate(-1deg)}75%{transform:translateX(8px) rotate(1deg)}}
 .bolts::before,.bolts::after{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9aa3b0,#3b424c);top:10px}
 .bolts::before{left:10px}.bolts::after{right:10px}
+.stage3d{position:relative;height:230px;margin:-6px -6px 0;border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#2b313b,#0d0f12 75%)}
+.stage3d canvas{display:block;width:100%;height:100%}
+.stage3d .load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:700 13px var(--f-body)}
+.credits{color:#6b7380;font-size:12px;margin:0;text-align:center}
 .timer{font:400 clamp(44px,9vw,72px)/1 var(--f-mono);color:var(--red);background:#120707;border:2px solid #3a0f0c;border-radius:12px;padding:10px 16px;text-align:center;text-shadow:0 0 14px rgba(255,59,48,.7);letter-spacing:.06em;font-variant-numeric:tabular-nums}
 .timer.calm{color:var(--amber);text-shadow:0 0 14px rgba(255,176,32,.6)}
 .timer.low{animation:blinkT .5s steps(2) infinite}
@@ -124,6 +129,7 @@ th{color:var(--muted);font-size:12px;border-top:0}
     <section class="bomb bolts" id="bomb">
       <div class="led" id="led"></div>
       <div class="info"><span id="bombName">Бомба №1</span><span id="wireInfo">Провода: 0/5</span></div>
+      <div class="stage3d" id="stage3d"><div class="load" id="load3d">Загружаю бомбу…</div></div>
       <div class="timer" id="timer">02:00</div>
       <div class="wires" id="wires"></div>
       <p class="how">Каждое верное уравнение перерезает провод. Ошибка — минус 10 секунд.</p>
@@ -142,6 +148,7 @@ th{color:var(--muted);font-size:12px;border-top:0}
     </section>
   </div>
   <details><summary>Для учителя: как решал</summary><div id="report"></div></details>
+  <p class="credits">3D-модели: «Dynamite with Timer» — Hunter Paramore, «C4» — J-Toastie (Poly Pizza, CC BY 3.0)</p>
 </div>
 
 <div class="overlay" id="start"><div class="modal">
@@ -243,13 +250,13 @@ function drawLevels(){const nav=$('levels');nav.replaceChildren();LEVELS.forEach
 function newWire(){task=GEN[LEVELS[lv].gen]();input='';hintStep=0;wrongs=0;waitNext=false;cur={kind:task.kind,q:task.eq,a:task.a,won:false,first:true,hint:false};
   $('eq').textContent=task.eq;$('eq').className='eq'+(task.text?' text':'')+(task.sys?' sys':'');$('ask').textContent=task.ask||'Найди x';$('tag').textContent=LEVELS[lv].name+' · провод '+(wi+1)+' из 5';$('msg').textContent='';$('msg').className='msg';$('hint').hidden=true;$('explain').hidden=true;$('hintBtn').disabled=false;$('hintBtn').textContent='Подсказка';drawScreen();drawWires()}
 function drawScreen(){const s=$('screen');s.textContent=input?input.replace('-','−'):'?';s.classList.toggle('empty',!input)}
-function tick(t){if(!timerOn||busy&&!waitNext){last=t;raf=requestAnimationFrame(tick);return}const dt=(t-last)/1000;last=t;if(!paused&&!waitNext){const before=Math.ceil(timeLeft);timeLeft-=dt;if(Math.ceil(timeLeft)<before&&timeLeft<=15)sTick()}drawTimer();if(timeLeft<=0){boom();return}raf=requestAnimationFrame(tick)}
-function startBomb(){cancelAnimationFrame(raf);wi=0;lost=0;busy=false;timeLeft=LEVELS[lv].t;log[lv]=[];$('led').className='led';$('bombName').textContent='Бомба №'+(lv+1);drawTimer();newWire();last=performance.now();raf=requestAnimationFrame(tick)}
+function tick(t){if(!timerOn||busy&&!waitNext){last=t;raf=requestAnimationFrame(tick);return}const dt=(t-last)/1000;last=t;if(!paused&&!waitNext){const before=Math.ceil(timeLeft);timeLeft-=dt;if(Math.ceil(timeLeft)<before&&timeLeft<=15)sTick()}drawTimer();window.B3D&&B3D.urgency(timerOn?1-timeLeft/LEVELS[lv].t:0);if(timeLeft<=0){boom();return}raf=requestAnimationFrame(tick)}
+function startBomb(){window.B3D&&B3D.reset(lv>=5?'c4':'dynamite');cancelAnimationFrame(raf);wi=0;lost=0;busy=false;timeLeft=LEVELS[lv].t;log[lv]=[];$('led').className='led';$('bombName').textContent='Бомба №'+(lv+1);drawTimer();newWire();last=performance.now();raf=requestAnimationFrame(tick)}
 function press(k){if(waitNext&&k==='go'){waitNext=false;nextWire();return}if(busy)return;if(k==='del')input=input.slice(0,-1);else if(k==='go'){submit();return}else if(k==='neg')input=input.startsWith('-')?input.slice(1):'-'+input;else if(input.replace('-','').length<4)input=(input==='0'?'':input==='-0'?'-':input)+k;drawScreen()}
 function submit(){if(!input||input==='-'||busy)return;const v=+input;
-  if(v===task.a){busy=true;cur.won=true;sCut();$('msg').className='msg ok';$('msg').textContent=pick(['Чисто!','Провод перерезан.','Так держать!','Минус один.']);
+  if(v===task.a){busy=true;cur.won=true;sCut();window.B3D&&B3D.cut();$('msg').className='msg ok';$('msg').textContent=pick(['Чисто!','Провод перерезан.','Так держать!','Минус один.']);
     const ws=$('wires').children[wi];if(ws){ws.className='wire cut';const r=ws.getBoundingClientRect();burst(r.left+r.width/2,r.top,24,['#ffb020','#fff','#ff6b5e'])}setTimeout(()=>{nextWire()},650)}
-  else{cur.first=false;wrongs++;sBad();const s=$('screen');s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');const b=$('bomb');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');
+  else{cur.first=false;wrongs++;sBad();window.B3D&&B3D.wrong();const s=$('screen');s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');const b=$('bomb');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');
     if(timerOn)timeLeft-=10;$('msg').className='msg bad';$('msg').textContent='x = '+input.replace('-','−')+' не подходит'+(timerOn?' · −10 сек':'')+'. Подставь и проверь.';input='';drawScreen();drawTimer();
     if(wrongs===2)showHint(true);if(wrongs>=3){busy=true;showExplain()}}}
 function hintList(){return task.steps.length>1?task.steps.slice(0,-1):['Подели обе части на число перед x.']}
@@ -259,11 +266,11 @@ function showExplain(){$('hint').hidden=true;const e=$('explain');e.hidden=false
 function nextWire(){log[lv].push(cur);report();wi++;busy=false;if(wi>=5){defused();return}newWire()}
 function stars(){const l=log[lv];const clean=l.filter(x=>x.won&&x.first).length;return clean>=5?3:clean>=3?2:1}
 function modal(title,big,body,btns){const ov=el('div','overlay');const m=el('div','modal');m.append(el('div','big',big),el('h3',null,title));if(body)m.append(body);const row=el('div','row');row.style.justifyContent='center';btns.forEach(([t,c,f])=>{const b=el('button','btn '+c,t);b.type='button';b.onclick=()=>{ov.remove();f()};row.append(b)});m.append(row);ov.append(m);document.body.append(ov);row.querySelector('button').focus()}
-function defused(){cancelAnimationFrame(raf);busy=true;$('led').className='led safe';sWin();for(let i=0;i<5;i++)setTimeout(()=>burst(innerWidth*(.2+Math.random()*.6),innerHeight*.3,36,['#34d27b','#ffb020','#fff','#5fb3ff']),i*130);
+function defused(){cancelAnimationFrame(raf);busy=true;window.B3D&&B3D.safe();$('led').className='led safe';sWin();for(let i=0;i<5;i++)setTimeout(()=>burst(innerWidth*(.2+Math.random()*.6),innerHeight*.3,36,['#34d27b','#ffb020','#fff','#5fb3ff']),i*130);
   const n=stars();best[lv]=Math.max(best[lv]||0,n);try{localStorage.setItem('bombBest',JSON.stringify(best))}catch(e){}drawLevels();
   const box=el('div');const st=el('div','stars');for(let i=0;i<3;i++)st.append(el('span',i<n?'':'off','★'));box.append(st,el('p',null,'Без ошибок: '+log[lv].filter(x=>x.first&&x.won).length+' из 5'+(timerOn?' · осталось '+fmtT(timeLeft):'')+'.'));
   const last=lv===LEVELS.length-1;modal(last?'Финальная бомба обезврежена!':'Бомба обезврежена!','✅',box,last?[['Ещё раз','main',()=>go(lv)]]:[['Следующая бомба','main',()=>go(lv+1)],['Ещё раз','',()=>go(lv)]])}
-function boom(){cancelAnimationFrame(raf);busy=true;sBoom();const r=$('bomb').getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,90,['#ff3b30','#ffb020','#ffd27a','#333']);document.body.animate([{filter:'brightness(3)'},{filter:'none'}],{duration:500});
+function boom(){cancelAnimationFrame(raf);busy=true;window.B3D&&B3D.boom();sBoom();const r=$('bomb').getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,90,['#ff3b30','#ffb020','#ffd27a','#333']);document.body.animate([{filter:'brightness(3)'},{filter:'none'}],{duration:500});
   modal('БУМ!','💥',el('p',null,'Время вышло. Ты перерезал '+log[lv].filter(x=>x.won).length+' из 5 проводов. Попробуй ещё раз — числа будут новые.'),[['Ещё раз','main',()=>go(lv)],['Без таймера','',()=>{if(timerOn)$('timerBtn').click();go(lv)}]])}
 function tutorial(onClose){const T=TUT[lv];const ov=el('div','overlay');const m=el('div','modal');m.append(el('div','tag','Бомба '+(lv+1)+' · как решать'),el('h3',null,T.title));const ul=el('ul','rules');T.rules.forEach(r=>ul.append(el('li',null,r)));m.append(ul);
   const sh=el('div','sheet');sh.append(el('div','h','ПРИМЕР'));T.ex.forEach(x=>sh.append(el('div',null,x)));sh.append(el('div','tot',T.tot));m.append(sh);
@@ -283,6 +290,46 @@ addEventListener('resize',size);size();drawLevels();drawWires();
 $('playBtn').onclick=()=>{audio();$('start').remove();go(0)};
 $('playBtn').focus();
 })();
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const wrap=document.getElementById('stage3d');const load=document.getElementById('load3d');
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true})}catch(e){wrap.hidden=true}
+if(renderer){
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+wrap.append(renderer.domElement);
+const scene=new THREE.Scene();const cam=new THREE.PerspectiveCamera(32,1,.1,100);cam.position.set(0,1.3,4.2);cam.lookAt(0,.35,0);
+scene.add(new THREE.HemisphereLight(0xcfe3ff,0x1a1208,1.1));
+const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(2.5,4,3);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
+const rim=new THREE.DirectionalLight(0xffb020,1.2);rim.position.set(-3,2,-2);scene.add(rim);
+const alarm=new THREE.PointLight(0xff2a1a,0,6);alarm.position.set(0,1.4,1.2);scene.add(alarm);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(2.2,48),new THREE.ShadowMaterial({opacity:.45}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const holder=new THREE.Group();scene.add(holder);
+const loader=new GLTFLoader();const cache={};let model=null,state='idle',urg=0,t0=performance.now(),fx=0,fxType='',boomT=0,safe=false;
+function fit(obj){const box=new THREE.Box3().setFromObject(obj);const size=box.getSize(new THREE.Vector3());const c=box.getCenter(new THREE.Vector3());const k=1.6/Math.max(size.x,size.y,size.z);obj.scale.setScalar(k);obj.position.set(-c.x*k,-box.min.y*k,-c.z*k);obj.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.emissive=m.material.emissive||new THREE.Color(0);}}})}
+function get(name){if(cache[name])return Promise.resolve(cache[name]);return new Promise((res,rej)=>loader.load('models/'+name+'.glb',g=>{cache[name]=g.scene;res(g.scene)},undefined,rej))}
+function resize(){const w=wrap.clientWidth,h=wrap.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(wrap);resize();
+window.B3D={
+  reset(name){safe=false;state='idle';urg=0;boomT=0;holder.visible=true;holder.scale.setScalar(1);alarm.color.set(0xff2a1a);
+    get(name).then(sc=>{if(model)holder.remove(model);model=sc.clone(true);fit(model);holder.add(model);load.hidden=true;model.traverse(m=>{if(m.isMesh)m.material.emissive.set(0)})}).catch(()=>{load.textContent='3D не загрузилось — играть можно и так'})},
+  cut(){fx=1;fxType='cut'},wrong(){fx=1;fxType='wrong'},urgency(u){urg=Math.max(0,Math.min(1,u))},
+  safe(){safe=true;alarm.color.set(0x34d27b)},boom(){state='boom';boomT=0}
+};
+let last=performance.now();
+function frame(t){const dt=Math.min(.05,(t-last)/1000);last=t;const time=(t-t0)/1000;
+  holder.rotation.y+=dt*(.35+urg*.9);holder.position.y=Math.sin(time*1.6)*.03;
+  // мигание: чем меньше времени, тем чаще
+  const rate=safe?0:2+urg*10;const on=safe?1:(Math.sin(time*rate*Math.PI)>0?1:0);alarm.intensity=safe?3:on*(4+urg*6);
+  if(model&&!safe)model.traverse(m=>{if(m.isMesh&&/screen|mat8|mat14|red/i.test(m.material.name||''))m.material.emissive.setRGB(on*.6,0,0)});
+  cam.position.x=0;cam.position.y=1.3;
+  if(fx>0){fx=Math.max(0,fx-dt*3.2);if(fxType==='wrong'){cam.position.x=(Math.random()-.5)*.18*fx;cam.position.y=1.3+(Math.random()-.5)*.12*fx}else{holder.scale.setScalar(1+Math.sin(fx*Math.PI)*.12)}}
+  if(state==='boom'){boomT+=dt;const k=Math.min(1,boomT/.35);holder.scale.setScalar(1+k*1.4);if(model)model.traverse(m=>{if(m.isMesh)m.material.emissive.setRGB(k*3,k*1.6,k*.4)});alarm.intensity=20*(1-k);if(boomT>.38){holder.visible=false;state='gone'}}
+  cam.lookAt(0,.35,0);renderer.render(scene,cam);requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+window.B3D.reset('dynamite');
+}
 </script>
 </body>
 </html>
