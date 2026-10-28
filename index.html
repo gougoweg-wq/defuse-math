@@ -57,7 +57,9 @@ header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:s
 .bomb .info{display:flex;justify-content:space-between;padding:0 30px 0 18px;font:700 13px var(--f-body);color:var(--muted)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .tag{font:800 12px var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
-.eq{font:400 clamp(28px,5.4vw,42px)/1.2 var(--f-display);margin:0;letter-spacing:.02em;overflow-wrap:anywhere}
+.eq{font:400 clamp(28px,5.4vw,42px)/1.2 var(--f-display);margin:0;letter-spacing:.02em;overflow-wrap:anywhere;white-space:pre-line}
+.eq.text{font:700 clamp(17px,2.6vw,21px)/1.45 var(--f-body);letter-spacing:0}
+.eq.sys{font-size:clamp(24px,4.4vw,34px);border-left:4px solid var(--amber);padding-left:12px}
 .ask{color:var(--muted);font-weight:700;margin:0}
 .input{display:flex;align-items:center;gap:10px}
 .input .x{font:400 30px var(--f-display);color:var(--muted)}
@@ -70,6 +72,8 @@ header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:s
 .key.go{background:linear-gradient(#ff5a4f,#d12a20);border-color:#ff7a70;font:400 17px var(--f-display);box-shadow:0 5px 0 #6e130d}
 .key.go:active,.key.go.press{box-shadow:0 1px 0 #6e130d}
 .key.del{color:var(--muted)}
+.key.go{grid-column:1/-1}
+.key.neg{color:var(--amber)}
 .msg{min-height:24px;font:800 16px var(--f-body)}
 .msg.ok{color:var(--ok)}.msg.bad{color:var(--red)}
 .hint,.explain{background:#1d2530;border:1px solid #2f4a63;border-radius:12px;padding:10px 12px;font-weight:700;display:flex;flex-direction:column;gap:6px}
@@ -127,7 +131,7 @@ th{color:var(--muted);font-size:12px;border-top:0}
     <section class="panel">
       <div class="tag" id="tag">Уровень</div>
       <p class="eq" id="eq"></p>
-      <p class="ask">Найди x</p>
+      <p class="ask" id="ask">Найди x</p>
       <div class="input"><span class="x">x =</span><div class="screen empty" id="screen">?</div></div>
       <div class="msg" id="msg"></div>
       <div class="hint" id="hint" hidden></div>
@@ -172,15 +176,43 @@ const GEN={
    const x=R(2,12),b=pick([2,3,4]),dd=b+pick([2,3]),a=R(1,8);const c=(b*(x+a)-dd*x)/(-b)+0;const cc=(dd*(x+a)-b*x)/b; // (x+a)/b = (x+cc)/dd
    const c2=(dd*(x+a))/b-x;if(!Number.isInteger(c2)||c2<=0||c2===a)return GEN.frac();
    return {eq:'(x + '+a+') / '+b+' = (x + '+c2+') / '+dd,a:x,kind:'Дроби',steps:['Крест-накрест: '+dd+'(x + '+a+') = '+b+'(x + '+c2+')','Раскрой скобки: '+co(dd)+' + '+dd*a+' = '+co(b)+' + '+b*c2,'Иксы влево, числа вправо: '+co(dd-b)+' = '+(b*c2-dd*a),'x = '+(b*c2-dd*a)+' : '+(dd-b)+' = '+x]}},
- boss(){return pick([GEN.both,GEN.twoBr,GEN.frac,GEN.twoBr])()}
+ boss(){return pick([GEN.both,GEN.twoBr,GEN.frac,GEN.twoBr])()},
+ minusBr(){const x=pick([R(-6,-1),R(1,10)]),b=R(2,5),c=pick([R(-5,-1),R(1,6)]),a=R(1,20),d=R(1,4);const e=a-b*(x-c)-d*x;const k=-(b+d),rhs=e-(a+b*c);
+   return {eq:a+' − '+b+'(x'+sg(-c)+') = '+lin(d,e),a:x,kind:'Минус перед скобкой',steps:['Раскрой скобки, минус меняет знаки: '+a+' − '+b+'x'+sg(b*c)+' = '+lin(d,e),'Сложи числа слева: '+lin(-b,a+b*c)+' = '+lin(d,e),'Иксы влево, числа вправо: '+lin(k,0)+' = '+num(rhs),'x = '+num(rhs)+' : '+(k<0?'('+num(k)+')':num(k))+' = '+num(x)]}},
+ fracHard(){if(Math.random()<.6){const x=pick([R(-5,-1),R(1,9)]),ms=pick([[2,3],[3,2],[2,5],[5,2],[3,4],[4,3]]),m=ms[0],n=ms[1],pp=R(1,4),r=R(1,4),q=R(-6,8);const k=n*pp-m*r;const s2=n*(pp*x+q)/m-r*x;
+     if(Math.abs(k)<2||!Number.isInteger(s2))return GEN.fracHard();
+     return {eq:'('+lin(pp,q)+') / '+m+' = ('+lin(r,s2)+') / '+n,a:x,kind:'Хитрые дроби',steps:['Крест-накрест: '+n+'('+lin(pp,q)+') = '+m+'('+lin(r,s2)+')','Раскрой скобки: '+lin(n*pp,n*q)+' = '+lin(m*r,m*s2),'Иксы влево, числа вправо: '+lin(k,0)+' = '+num(m*s2-n*q),'x = '+num(m*s2-n*q)+' : '+(k<0?'('+num(k)+')':num(k))+' = '+num(x)]}}
+   const [a,b]=pick([[2,3],[3,4],[2,5],[4,6],[3,6],[4,5]]);const L=a*b/gcd(a,b);const x=R(1,5)*L;const c=x/a+x/b;const k=L/a+L/b;
+   return {eq:'x/'+a+' + x/'+b+' = '+c,a:x,kind:'Хитрые дроби',steps:['Умножь всё на '+L+' (общий знаменатель): '+lin(L/a,0)+' + '+lin(L/b,0)+' = '+c*L,lin(k,0)+' = '+c*L,'x = '+c*L+' : '+k+' = '+x]}},
+ word(){const t=pick([
+   ()=>{const x=R(5,40),S=3*x+3;return {eq:'Сумма трёх последовательных чисел равна '+S+'. Найди меньшее из них.',a:x,steps:['Пусть меньшее — x, тогда числа x, x + 1, x + 2','x + (x + 1) + (x + 2) = '+S,'3x + 3 = '+S+', значит 3x = '+(S-3),'x = '+(S-3)+' : 3 = '+x]}},
+   ()=>{const x=R(6,15),k=R(2,8),S=2*x+k;return {eq:'Брат старше сестры на '+yrs(k)+'. Вместе им '+yrs(S)+'. Сколько лет сестре?',a:x,steps:['Сестре x лет, брату x + '+k,'x + (x + '+k+') = '+S,'2x = '+S+' − '+k+' = '+(S-k),'x = '+(S-k)+' : 2 = '+x]}},
+   ()=>{const w=R(3,20),k=R(2,10),P=4*w+2*k;return {eq:'Периметр прямоугольника '+P+' см. Длина на '+k+' см больше ширины. Найди ширину.',a:w,steps:['Ширина x, длина x + '+k,'2(x + x + '+k+') = '+P,'4x + '+2*k+' = '+P+', значит 4x = '+(P-2*k),'x = '+(P-2*k)+' : 4 = '+w]}},
+   ()=>{const x=R(2,15),a=R(3,6),b=R(1,10),c=(a-1)*x-b;if(c<=0)return null;return {eq:'Задумали число, умножили на '+a+' и отняли '+b+'. Получилось столько же, сколько если к числу прибавить '+c+'. Что за число?',a:x,steps:[a+'x − '+b+' = x + '+c,a+'x − x = '+c+' + '+b,(a-1)+'x = '+(c+b),'x = '+(c+b)+' : '+(a-1)+' = '+x]}},
+   ()=>{const s=R(5,12),t=R(1,10),f=3*s+2*t;return {eq:'Отцу '+yrs(f)+', сыну '+yrs(s)+'. Через сколько лет отец будет ровно в 3 раза старше сына?',a:t,steps:['Через x лет: отцу '+f+' + x, сыну '+s+' + x',f+' + x = 3('+s+' + x)',f+' + x = '+3*s+' + 3x, значит '+(f-3*s)+' = 2x','x = '+(f-3*s)+' : 2 = '+t]}}
+  ])();if(!t)return GEN.word();t.kind='Задачи на уравнение';t.text=true;t.ask='Ответ (одно число)';return t},
+ system(){const x=pick([R(-5,-1),R(1,8)]),y=R(-5,8),a=R(1,4),b=R(1,4),d=R(1,4),e=R(1,4);const c=a*x+b*y,f=d*x-e*y,k=a*e+d*b;
+   const l1=lin2(a,b)+' = '+num(c),l2=lin2(d,-e)+' = '+num(f);
+   return {eq:l1+'\n'+l2,a:x,kind:'Системы',sys:true,ask:'Найди x',steps:[(e===1?'Умножим второе на '+b+': ':b===1?'Умножим первое на '+e+': ':'Умножим первое на '+e+', второе на '+b+': ')+lin2(a*e,b*e)+' = '+num(c*e)+' и '+lin2(d*b,-e*b)+' = '+num(f*b),'Сложим — y пропадает: '+lin(k,0)+' = '+num(c*e+f*b),'x = '+num(c*e+f*b)+' : '+k+' = '+num(x)]}},
+ hard(){return pick([GEN.minusBr,GEN.fracHard,GEN.system,GEN.minusBr,GEN.word])()}
 };
-const LEVELS=[{name:'Скобки',gen:'brackets',t:150},{name:'x с двух сторон',gen:'both',t:150},{name:'Скобки с двух сторон',gen:'twoBr',t:200},{name:'Дроби',gen:'frac',t:200},{name:'Финальная бомба',gen:'boss',t:180}];
+function yrs(n){const d=n%10,h=n%100;return n+' '+(d===1&&h!==11?'год':d>=2&&d<=4&&(h<12||h>14)?'года':'лет')}
+function gcd(a,b){return b?gcd(b,a%b):a}
+function num(n){return n<0?'−'+(-n):String(n)}
+function lin(k,c){let s=k===0?'':k===1?'x':k===-1?'−x':(k<0?'−'+(-k):k)+'x';if(c){s+=s?(c<0?' − '+(-c):' + '+c):num(c)}else if(!s)s='0';return s}
+function lin2(a,b){let s=a===1?'x':a===-1?'−x':num(a)+'x';s+=b<0?' − '+(b===-1?'':-b)+'y':' + '+(b===1?'':b)+'y';return s}
+const LEVELS=[{name:'Скобки',gen:'brackets',t:150},{name:'x с двух сторон',gen:'both',t:150},{name:'Скобки с двух сторон',gen:'twoBr',t:200},{name:'Дроби',gen:'frac',t:200},{name:'Финал I',gen:'boss',t:180},{name:'Минус перед скобкой',gen:'minusBr',t:220},{name:'Хитрые дроби',gen:'fracHard',t:260},{name:'Задачи',gen:'word',t:280},{name:'Системы',gen:'system',t:280},{name:'Хардкор',gen:'hard',t:240}];
 const TUT=[
  {title:'Уравнения со скобками',rules:['Сначала раскрой скобки: множитель умножаем на каждое слагаемое','Число переносим в другую часть — знак меняется','Делим на число перед x'],ex:['3(x + 4) = 27','3x + 12 = 27','3x = 27 − 12 = 15','x = 15 : 3'],tot:'x = 5'},
  {title:'x с двух сторон',rules:['Все иксы собираем слева, все числа справа','При переносе знак меняется: +2x → −2x','Приводим подобные и делим'],ex:['5x + 3 = 2x + 15','5x − 2x = 15 − 3','3x = 12'],tot:'x = 4'},
  {title:'Скобки с двух сторон',rules:['Раскрой обе скобки','Дальше как обычно: иксы влево, числа вправо','Проверь знаки перед скобкой'],ex:['4(x + 1) = 2(x + 7)','4x + 4 = 2x + 14','4x − 2x = 14 − 4','2x = 10'],tot:'x = 5'},
  {title:'Уравнения с дробями',rules:['Одна дробь: умножь обе части на знаменатель','Две дроби: умножаем крест-накрест','Потом раскрываем скобки и решаем как обычно'],ex:['(x + 4) / 5 = (x − 2) / 2','2(x + 4) = 5(x − 2)','2x + 8 = 5x − 10','18 = 3x'],tot:'x = 6'},
- {title:'Финальная бомба',rules:['Здесь всё вперемешку','Сначала посмотри, есть ли скобки или дроби','Не спеши: каждая ошибка — минус 10 секунд'],ex:['Скобки → раскрыть','Дроби → умножить','Иксы влево, числа вправо'],tot:'и делим'}];
+ {title:'Финальная бомба',rules:['Здесь всё вперемешку','Сначала посмотри, есть ли скобки или дроби','Не спеши: каждая ошибка — минус 10 секунд'],ex:['Скобки → раскрыть','Дроби → умножить','Иксы влево, числа вправо'],tot:'и делим'},
+ {title:'Минус перед скобкой',rules:['Минус перед скобкой меняет знак КАЖДОГО слагаемого внутри','−3(x − 2) = −3x + 6','Ответ может быть отрицательным: кнопка «−»'],ex:['7 − 3(x − 2) = 2x + 3','7 − 3x + 6 = 2x + 3','13 − 3x = 2x + 3','−5x = −10'],tot:'x = 2'},
+ {title:'Хитрые дроби',rules:['Две дроби через «=» — крест-накрест','Сумма дробей — умножь всё на общий знаменатель','Скобки после умножения раскрывай аккуратно'],ex:['x/3 + x/4 = 14','· 12:  4x + 3x = 168','7x = 168'],tot:'x = 24'},
+ {title:'Задачи на уравнение',rules:['Обозначь неизвестное через x','Запиши, что чему равно — это и есть уравнение','Реши и проверь, подходит ли ответ по смыслу'],ex:['Брат старше сестры на 4 года, вместе 20','x + (x + 4) = 20','2x = 16'],tot:'сестре 8'},
+ {title:'Системы уравнений',rules:['Цель — убрать одну переменную','Умножь уравнения так, чтобы при y были одинаковые числа с разными знаками','Сложи уравнения — y пропадёт'],ex:['2x + y = 7','x − y = 2','сложим: 3x = 9'],tot:'x = 3'},
+ {title:'Хардкор',rules:['Всё сложное вперемешку','Отрицательные ответы — через «−»','Ошибка — минус 10 секунд, думай до выстрела'],ex:['Минус перед скобкой','Дроби крест-накрест','Системы и задачи'],tot:'удачи, сапёр'}];
 const WIRE=[['#e53935','#ff6b5e'],['#1e88e5','#5fb3ff'],['#fdd835','#ffee75'],['#43a047','#7ad67e'],['#f5f5f5','#cfcfcf']];
 
 let lv=0,wi=0,task=null,input='',busy=false,timerOn=true,timeLeft=0,last=0,raf=0,paused=false,hintStep=0,wrongs=0,waitNext=false,cur=null,lost=0;
@@ -209,16 +241,16 @@ function drawTimer(){const t=$('timer');if(!timerOn){t.textContent='без та�
 function drawWires(){const W=$('wires');W.replaceChildren();for(let i=0;i<5;i++){const w=el('div','wire'+(i<wi?(log[lv][i]&&log[lv][i].won?' cut':' lost'):i===wi?' cur':''));const l=el('div','l'),r=el('div','r');l.style.background=r.style.background='linear-gradient('+WIRE[i][1]+','+WIRE[i][0]+')';w.append(l,r);W.append(w)}$('wireInfo').textContent='Провода: '+Math.min(wi,5)+'/5'}
 function drawLevels(){const nav=$('levels');nav.replaceChildren();LEVELS.forEach((L,i)=>{const b=el('button','lv',(i+1)+'. '+L.name);b.type='button';b.setAttribute('aria-current',String(i===lv));if(best[i])b.append(el('span','st',' '+'★'.repeat(best[i])));b.onclick=()=>go(i);nav.append(b)})}
 function newWire(){task=GEN[LEVELS[lv].gen]();input='';hintStep=0;wrongs=0;waitNext=false;cur={kind:task.kind,q:task.eq,a:task.a,won:false,first:true,hint:false};
-  $('eq').textContent=task.eq;$('tag').textContent=LEVELS[lv].name+' · провод '+(wi+1)+' из 5';$('msg').textContent='';$('msg').className='msg';$('hint').hidden=true;$('explain').hidden=true;$('hintBtn').disabled=false;$('hintBtn').textContent='Подсказка';drawScreen();drawWires()}
-function drawScreen(){const s=$('screen');s.textContent=input||'?';s.classList.toggle('empty',!input)}
+  $('eq').textContent=task.eq;$('eq').className='eq'+(task.text?' text':'')+(task.sys?' sys':'');$('ask').textContent=task.ask||'Найди x';$('tag').textContent=LEVELS[lv].name+' · провод '+(wi+1)+' из 5';$('msg').textContent='';$('msg').className='msg';$('hint').hidden=true;$('explain').hidden=true;$('hintBtn').disabled=false;$('hintBtn').textContent='Подсказка';drawScreen();drawWires()}
+function drawScreen(){const s=$('screen');s.textContent=input?input.replace('-','−'):'?';s.classList.toggle('empty',!input)}
 function tick(t){if(!timerOn||busy&&!waitNext){last=t;raf=requestAnimationFrame(tick);return}const dt=(t-last)/1000;last=t;if(!paused&&!waitNext){const before=Math.ceil(timeLeft);timeLeft-=dt;if(Math.ceil(timeLeft)<before&&timeLeft<=15)sTick()}drawTimer();if(timeLeft<=0){boom();return}raf=requestAnimationFrame(tick)}
 function startBomb(){cancelAnimationFrame(raf);wi=0;lost=0;busy=false;timeLeft=LEVELS[lv].t;log[lv]=[];$('led').className='led';$('bombName').textContent='Бомба №'+(lv+1);drawTimer();newWire();last=performance.now();raf=requestAnimationFrame(tick)}
-function press(k){if(waitNext&&k==='go'){waitNext=false;nextWire();return}if(busy)return;if(k==='del')input=input.slice(0,-1);else if(k==='go'){submit();return}else if(input.length<4)input=(input==='0'?'':input)+k;drawScreen()}
-function submit(){if(!input||busy)return;const v=+input;
+function press(k){if(waitNext&&k==='go'){waitNext=false;nextWire();return}if(busy)return;if(k==='del')input=input.slice(0,-1);else if(k==='go'){submit();return}else if(k==='neg')input=input.startsWith('-')?input.slice(1):'-'+input;else if(input.replace('-','').length<4)input=(input==='0'?'':input==='-0'?'-':input)+k;drawScreen()}
+function submit(){if(!input||input==='-'||busy)return;const v=+input;
   if(v===task.a){busy=true;cur.won=true;sCut();$('msg').className='msg ok';$('msg').textContent=pick(['Чисто!','Провод перерезан.','Так держать!','Минус один.']);
     const ws=$('wires').children[wi];if(ws){ws.className='wire cut';const r=ws.getBoundingClientRect();burst(r.left+r.width/2,r.top,24,['#ffb020','#fff','#ff6b5e'])}setTimeout(()=>{nextWire()},650)}
   else{cur.first=false;wrongs++;sBad();const s=$('screen');s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');const b=$('bomb');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');
-    if(timerOn)timeLeft-=10;$('msg').className='msg bad';$('msg').textContent='x = '+input+' не подходит'+(timerOn?' · −10 сек':'')+'. Подставь и проверь.';input='';drawScreen();drawTimer();
+    if(timerOn)timeLeft-=10;$('msg').className='msg bad';$('msg').textContent='x = '+input.replace('-','−')+' не подходит'+(timerOn?' · −10 сек':'')+'. Подставь и проверь.';input='';drawScreen();drawTimer();
     if(wrongs===2)showHint(true);if(wrongs>=3){busy=true;showExplain()}}}
 function hintList(){return task.steps.length>1?task.steps.slice(0,-1):['Подели обе части на число перед x.']}
 function showHint(all){if(busy)return;const L=hintList();hintStep=all?L.length:Math.min(L.length,hintStep+1);cur.hint=true;const h=$('hint');h.hidden=false;h.replaceChildren(el('b',null,'Подсказка'));const ol=el('ol');L.slice(0,hintStep).forEach(x=>ol.append(el('li',null,x)));h.append(ol);const b=$('hintBtn');if(hintStep>=L.length){b.disabled=true;b.textContent='Подсказка ✓'}else b.textContent='Ещё шаг ('+hintStep+'/'+L.length+')'}
@@ -237,12 +269,12 @@ function tutorial(onClose){const T=TUT[lv];const ov=el('div','overlay');const m=
   const sh=el('div','sheet');sh.append(el('div','h','ПРИМЕР'));T.ex.forEach(x=>sh.append(el('div',null,x)));sh.append(el('div','tot',T.tot));m.append(sh);
   const b=el('button','btn main',onClose?'Понял, режем!':'Вернуться');b.type='button';b.onclick=()=>{ov.remove();paused=false;if(onClose)onClose()};m.append(b);ov.append(m);document.body.append(ov);setTimeout(()=>b.focus(),50)}
 function go(n){cancelAnimationFrame(raf);document.querySelectorAll('.overlay').forEach(o=>o.remove());lv=n;busy=true;drawLevels();$('eq').textContent='';tutorial(()=>startBomb())}
-function report(){const box=$('report');box.replaceChildren();const all=log.flat();const kinds=['Скобки','x в обеих частях','Скобки с двух сторон','Дроби'];const tb=el('table');const h=el('tr');['Тема','Без ошибок','С подсказкой','Вывод'].forEach(x=>h.append(el('th',null,x)));tb.append(h);
+function report(){const box=$('report');box.replaceChildren();const all=log.flat();const kinds=['Скобки','x в обеих частях','Скобки с двух сторон','Дроби','Минус перед скобкой','Хитрые дроби','Задачи на уравнение','Системы'];const tb=el('table');const h=el('tr');['Тема','Без ошибок','С подсказкой','Вывод'].forEach(x=>h.append(el('th',null,x)));tb.append(h);
   kinds.forEach(k=>{const l=all.filter(x=>x.kind===k);const f=l.filter(x=>x.won&&x.first).length,hi=l.filter(x=>x.hint).length;let v='—',c='';if(l.length){const r=f/l.length;if(r>=.8){v='уверенно';c='st-ok'}else if(r>=.5){v='почти';c='st-mid'}else{v='тренировать';c='st-bad'}}const tr=el('tr');tr.append(el('td',null,k),el('td',null,l.length?f+' из '+l.length:'—'),el('td',null,l.length?String(hi):'—'),el('td',c,v));tb.append(tr)});box.append(tb);
   const miss=all.filter(x=>!x.first).map(x=>x.q+' → x = '+x.a);if(miss.length)box.append(el('p','how','Ошибки: '+miss.join('; ')))}
 
-const pad=$('pad');['7','8','9','4','5','6','1','2','3','del','0','go'].forEach(k=>{const b=el('button','key'+(k==='go'?' go':k==='del'?' del':''),k==='del'?'⌫':k==='go'?'Резать ✂':k);b.type='button';b.dataset.k=k;b.setAttribute('aria-label',k==='del'?'Стереть':k==='go'?'Резать провод':k);b.onclick=()=>press(k);pad.append(b)});
-addEventListener('keydown',e=>{if(document.querySelector('.overlay'))return;let k=null;if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='del';else if(e.key==='Enter')k='go';if(k){e.preventDefault();press(k);const b=pad.querySelector('[data-k="'+k+'"]');if(b){b.classList.add('press');setTimeout(()=>b.classList.remove('press'),90)}}});
+const pad=$('pad');['7','8','9','4','5','6','1','2','3','neg','0','del','go'].forEach(k=>{const b=el('button','key'+(k==='go'?' go':k==='del'?' del':k==='neg'?' neg':''),k==='del'?'⌫':k==='go'?'Резать ✂':k==='neg'?'±':k);b.type='button';b.dataset.k=k;b.setAttribute('aria-label',k==='del'?'Стереть':k==='go'?'Резать провод':k==='neg'?'Сменить знак':k);b.onclick=()=>press(k);pad.append(b)});
+addEventListener('keydown',e=>{if(document.querySelector('.overlay'))return;let k=null;if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='del';else if(e.key==='-')k='neg';else if(e.key==='Enter')k='go';if(k){e.preventDefault();press(k);const b=pad.querySelector('[data-k="'+k+'"]');if(b){b.classList.add('press');setTimeout(()=>b.classList.remove('press'),90)}}});
 $('hintBtn').onclick=()=>showHint(false);
 $('tutBtn').onclick=()=>{if(document.querySelector('.overlay'))return;paused=true;tutorial(null)};
 $('timerBtn').onclick=()=>{timerOn=!timerOn;$('timerBtn').setAttribute('aria-pressed',String(timerOn));$('timerBtn').textContent=timerOn?'⏱ Таймер':'⏱ Без таймера';drawTimer()};
