@@ -7,6 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@500;700;800&family=Share+Tech+Mono&display=swap">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<link rel="stylesheet" href="/games/rts-student-shell.css">
 <style>
 /* Layout: слева бомба с таймером и проводами, справа уравнение, ввод и разбор. Тёмный «бункер». */
 :root{
@@ -147,7 +148,7 @@ th{color:var(--muted);font-size:12px;border-top:0}
       <p class="how">Можно печатать с клавиатуры, Enter — резать провод.</p>
     </section>
   </div>
-  <details><summary>Для учителя: как решал</summary><div id="report"></div></details>
+  <details class="rts-teacher-only"><summary>Для учителя: как решал</summary><div id="report"></div></details>
   <p class="credits">3D-модели: «Dynamite with Timer» — Hunter Paramore, «C4» — J-Toastie (Poly Pizza, CC BY 3.0)</p>
 </div>
 
@@ -268,14 +269,30 @@ function submit(){if(!input||input==='-'||busy)return;const v=+input;
   else{cur.first=false;wrongs++;sBad();window.B3D&&B3D.wrong();const s=$('screen');s.classList.remove('bad');void s.offsetWidth;s.classList.add('bad');const b=$('bomb');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');
     if(timerOn)timeLeft-=10;$('msg').className='msg bad';$('msg').textContent='x = '+input.replace('-','−')+' не подходит'+(timerOn?' · −10 сек':'')+'. Подставь и проверь.';input='';drawScreen();drawTimer();
     if(wrongs===2)showHint(true);if(wrongs>=3){busy=true;showExplain()}}}
-function hintList(){return task.steps.length>1?task.steps.slice(0,-1):['Подели обе части на число перед x.']}
+const METHOD_HINTS={
+ 'Скобки':['Раскрой скобки: умножь число перед скобкой на каждое слагаемое внутри.','Перенеси свободные числа на другую сторону уравнения.','Собери x с одной стороны и подели на коэффициент при x.'],
+ 'x в обеих частях':['Собери все x в одной части, все числа — в другой.','Сведи уравнение к виду «коэффициент · x = число».','Подели обе части на коэффициент при x.'],
+ 'Скобки с двух сторон':['Раскрой скобки в обеих частях уравнения.','Перенеси слагаемые с x влево, числа — вправо.','Подели на коэффициент при x.'],
+ 'Дроби':['Убери знаменатель: умножь обе части на общее число.','Реши линейное уравнение после умножения.','Подели на коэффициент при x, если нужно.'],
+ 'Минус перед скобкой':['Минус перед скобкой меняет знак у каждого слагаемого внутри.','Сложи числа с одной стороны, x — с другой.','Подели на коэффициент при x.'],
+ 'Хитрые дроби':['Приведи дроби к общему знаменателю или умножь всё на него.','Перенеси слагаемые и оставь x с одной стороны.','Подели на коэффициент при x.'],
+ 'Системы':['Умножь одно или оба уравнения, чтобы сократить одну переменную.','Сложи или вычти уравнения, чтобы убрать y.','Найди x из уравнения с одной переменной.'],
+ 'Квадратные':['По коэффициентам выпиши сумму и произведение корней (не вычисляя их).','Подбери два числа с такой суммой и произведением.','Укажи нужный корень по условию (больший или меньший).'],
+ 'Виет':['Используй связь корней с коэффициентами (сумма и произведение).','Найди второй корень через сумму или произведение, не подставляя ответ.','Запиши искомую величину из условия.']
+};
+function hintList(){
+ if(task.sys)return METHOD_HINTS['Системы'];
+ if(task.kind&&METHOD_HINTS[task.kind])return METHOD_HINTS[task.kind];
+ if(task.text)return ['Запиши неизвестное как x и составь уравнение по условию.','Перенеси слагаемые: x — в одну сторону, числа — в другую.','Сведи к «коэффициент · x = число» и раздели обе части на коэффициент.'];
+ return ['Перенеси слагаемые: x — в одну сторону, числа — в другую.','Сведи к «коэффициент · x = число» и раздели обе части на коэффициент.'];
+}
 function showHint(all){if(busy)return;const L=hintList();hintStep=all?L.length:Math.min(L.length,hintStep+1);cur.hint=true;const h=$('hint');h.hidden=false;h.replaceChildren(el('b',null,'Подсказка'));const ol=el('ol');L.slice(0,hintStep).forEach(x=>ol.append(el('li',null,x)));h.append(ol);const b=$('hintBtn');if(hintStep>=L.length){b.disabled=true;b.textContent='Подсказка ✓'}else b.textContent='Ещё шаг ('+hintStep+'/'+L.length+')'}
 function showExplain(){$('hint').hidden=true;const e=$('explain');e.hidden=false;e.replaceChildren(el('h4',null,'Разбор'));const ol=el('ol');task.steps.forEach((x,i,a)=>ol.append(el('li',i===a.length-1?'ans':null,x)));e.append(ol);
   const b=el('button','btn main','Понятно, дальше ▶');b.type='button';b.onclick=()=>{if(waitNext){waitNext=false;nextWire()}};e.append(b);waitNext=true;cur.won=false;lost++;setTimeout(()=>b.focus(),50)}
 function nextWire(){log[lv].push(cur);report();wi++;busy=false;if(wi>=5){defused();return}newWire()}
 function stars(){const l=log[lv];const clean=l.filter(x=>x.won&&x.first).length;return clean>=5?3:clean>=3?2:1}
 function modal(title,big,body,btns){const ov=el('div','overlay');const m=el('div','modal');m.append(el('div','big',big),el('h3',null,title));if(body)m.append(body);const row=el('div','row');row.style.justifyContent='center';btns.forEach(([t,c,f])=>{const b=el('button','btn '+c,t);b.type='button';b.onclick=()=>{ov.remove();f()};row.append(b)});m.append(row);ov.append(m);document.body.append(ov);row.querySelector('button').focus()}
-function defused(){cancelAnimationFrame(raf);busy=true;window.B3D&&B3D.safe();$('led').className='led safe';sWin();for(let i=0;i<5;i++)setTimeout(()=>burst(innerWidth*(.2+Math.random()*.6),innerHeight*.3,36,['#34d27b','#ffb020','#fff','#5fb3ff']),i*130);
+function defused(){cancelAnimationFrame(raf);busy=true;window.B3D&&B3D.safe();$('led').className='led safe';sWin();try{window.__rtsComplete&&window.__rtsComplete({score:lv+1})}catch(e){}for(let i=0;i<5;i++)setTimeout(()=>burst(innerWidth*(.2+Math.random()*.6),innerHeight*.3,36,['#34d27b','#ffb020','#fff','#5fb3ff']),i*130);
   const n=stars();best[lv]=Math.max(best[lv]||0,n);try{localStorage.setItem('bombBest',JSON.stringify(best))}catch(e){}drawLevels();
   const box=el('div');const st=el('div','stars');for(let i=0;i<3;i++)st.append(el('span',i<n?'':'off','★'));box.append(st,el('p',null,'Без ошибок: '+log[lv].filter(x=>x.first&&x.won).length+' из 5'+(timerOn?' · осталось '+fmtT(timeLeft):'')+'.'));
   const last=lv===LEVELS.length-1;modal(last?'Финальная бомба обезврежена!':'Бомба обезврежена!','✅',box,last?[['Ещё раз','main',()=>go(lv)]]:[['Следующая бомба','main',()=>go(lv+1)],['Ещё раз','',()=>go(lv)]])}
@@ -304,7 +321,12 @@ $('playBtn').focus();
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const wrap=document.getElementById('stage3d');const load=document.getElementById('load3d');
-let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true})}catch(e){wrap.hidden=true}
+function show2dBomb(){
+  const loadEl=document.getElementById('load3d');
+  if(loadEl)loadEl.hidden=true;
+  wrap.innerHTML='<div aria-hidden="true" style="display:grid;place-items:center;height:100%;font-size:96px;line-height:1">💣</div><p style="text-align:center;margin:0;color:#9aa3b0;font-weight:700">Бомба</p>';
+}
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true})}catch(e){show2dBomb()}
 if(renderer){
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
 wrap.append(renderer.domElement);
@@ -322,7 +344,7 @@ function resize(){const w=wrap.clientWidth,h=wrap.clientHeight;renderer.setSize(
 new ResizeObserver(resize).observe(wrap);resize();
 window.B3D={
   reset(name){safe=false;state='idle';urg=0;boomT=0;holder.visible=true;holder.scale.setScalar(1);alarm.color.set(0xff2a1a);
-    get(name).then(sc=>{if(model)holder.remove(model);model=sc.clone(true);fit(model);holder.add(model);load.hidden=true;model.traverse(m=>{if(m.isMesh)m.material.emissive.set(0)})}).catch(()=>{load.textContent='3D не загрузилось — играть можно и так'})},
+    get(name).then(sc=>{if(model)holder.remove(model);model=sc.clone(true);fit(model);holder.add(model);load.hidden=true;model.traverse(m=>{if(m.isMesh)m.material.emissive.set(0)})}).catch(()=>{holder.innerHTML='';show2dBomb()})},
   cut(){fx=1;fxType='cut'},wrong(){fx=1;fxType='wrong'},urgency(u){urg=Math.max(0,Math.min(1,u))},
   safe(){safe=true;alarm.color.set(0x34d27b)},boom(){state='boom';boomT=0}
 };
@@ -340,5 +362,7 @@ requestAnimationFrame(frame);
 window.B3D.reset('dynamite');
 }
 </script>
+<script src="/games/rts-student-shell.js"></script>
+<script src="/games/rts-embed.js" data-game="defuse-math"></script>
 </body>
 </html>
